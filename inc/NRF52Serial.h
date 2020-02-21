@@ -12,8 +12,7 @@ namespace codal
 {
     class NRF52Serial : public Serial
     {
-        int tx_byte_buffer;
-        int rx_byte_buffer;
+        bool is_configured_;
 
         protected:
         virtual int enableInterrupt(SerialInterruptType t) override;
@@ -23,6 +22,7 @@ namespace codal
 
         public:
 
+        uint8_t rx_byte_buf_;
         nrfx_uarte_t uart_instance;
 
         /**
@@ -40,6 +40,41 @@ namespace codal
 
         virtual int putc(char) override;
         virtual int getc() override;
+
+        /**
+          * Sends a buffer of known length over the serial line.
+          * 
+          * Unlike the Serial.send () function, 
+          * this function does not transfer 1 byte unit 
+          * and directly connects the parameter buffer pointer to DMA.
+          * Used when fast transfer is required.
+          *
+          * @param buffer a pointer to the first character of the buffer
+          *
+          * @param len the number of bytes that are safely available to read.
+          *
+          * @param mode the selected mode, one of: ASYNC, SYNC_SPINWAIT, SYNC_SLEEP. Each mode
+          *        gives a different behaviour:
+          *
+          *            ASYNC - bytes are copied into the txBuff and returns immediately.
+          *
+          *            SYNC_SPINWAIT - bytes are copied into the txBuff and this method
+          *                            will spin (lock up the processor) until all bytes
+          *                            have been sent.
+          *
+          *            SYNC_SLEEP - bytes are copied into the txBuff and the fiber sleeps
+          *                         until all bytes have been sent. This allows other fibers
+          *                         to continue execution.
+          *
+          *         Defaults to SYNC_SLEEP.
+          *
+          * @return the number of bytes written, CODAL_SERIAL_IN_USE if another fiber
+          *         is using the serial instance for transmission, DEVICE_INVALID_PARAMETER
+          *         if buffer is invalid, or the given bufferLen is <= 0.
+         **/
+        int write(uint8_t *buffer, int bufferLen, SerialMode mode = DEVICE_DEFAULT_SERIAL_MODE);
+
+        bool isConfigured() const;
 
         ~NRF52Serial();
     };
