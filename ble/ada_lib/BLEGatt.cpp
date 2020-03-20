@@ -54,7 +54,7 @@ uint16_t BLEGatt::readCharByUuid(uint16_t conn_hdl, BLEUuid bleuuid, void* buffe
 
   while( _adamsg.isWaiting() )
   {
-    delay( conn->getConnectionInterval() );
+    target_wait(conn->getConnectionInterval());
   }
 
   _adamsg.begin(true);
@@ -256,14 +256,14 @@ void BLEGatt::_removeCharacteristic(BLEClientCharacteristic* chr)
     // found the char, swap with the last one
     if ( _client.chr_list[i] == chr )
     {
-      vTaskSuspendAll();
+      // vTaskSuspendAll();
 
       _client.chr_count--;
 
       _client.chr_list[i] = _client.chr_list[ _client.chr_count ];
       _client.chr_list[_client.chr_count] = NULL;
 
-      ( void ) xTaskResumeAll();
+      // ( void ) xTaskResumeAll();
 
       break;
     }

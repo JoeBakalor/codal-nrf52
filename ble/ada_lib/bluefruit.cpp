@@ -90,17 +90,17 @@ extern "C"
 void flash_nrf5x_event_cb (uint32_t event) ATTR_WEAK;
 }
 
-void adafruit_ble_task(void* arg);
-void adafruit_soc_task(void* arg);
+// void adafruit_ble_task(void* arg);
+// void adafruit_soc_task(void* arg);
 
 /*------------------------------------------------------------------*/
 /* INTERNAL FUNCTION
  *------------------------------------------------------------------*/
-static void bluefruit_blinky_cb( TimerHandle_t xTimer )
-{
-  (void) xTimer;
-  digitalToggle(LED_BLUE);
-}
+// static void bluefruit_blinky_cb( TimerHandle_t xTimer )
+// {
+//   (void) xTimer;
+//   digitalToggle(LED_BLUE);
+// }
 
 static void nrf_error_cb(uint32_t id, uint32_t pc, uint32_t info)
 {
@@ -160,10 +160,10 @@ AdafruitBluefruit::AdafruitBluefruit(void)
 
   memclr(_connection, sizeof(_connection));
 
-  _ble_event_sem = NULL;
-  _soc_event_sem = NULL;
+  // _ble_event_sem = NULL;
+  // _soc_event_sem = NULL;
 
-  _led_blink_th  = NULL;
+  // _led_blink_th  = NULL;
   _led_conn      = true;
 
   _tx_power      = CFG_BLE_TX_POWER_LEVEL;
@@ -183,8 +183,8 @@ AdafruitBluefruit::AdafruitBluefruit(void)
                   .oob          = 0,
                   .min_key_size = 7,
                   .max_key_size = 16,
-                  .kdist_own    = { .enc = 1, .id = 1},
-                  .kdist_peer   = { .enc = 1, .id = 1},
+                  .kdist_own    = { .enc = 1, .id = 1, .sign = 1, .link = 1},
+                  .kdist_peer   = { .enc = 1, .id = 1, .sign = 1, .link = 1},
                 });
 }
 
@@ -464,23 +464,23 @@ bool AdafruitBluefruit::begin(uint8_t prph_count, uint8_t central_count)
   if (_central_count)  Central.begin();
 
   // Create RTOS Semaphore & Task for BLE Event
-  _ble_event_sem = xSemaphoreCreateBinary();
-  VERIFY(_ble_event_sem);
+  // _ble_event_sem = xSemaphoreCreateBinary();
+  // VERIFY(_ble_event_sem);
 
-  TaskHandle_t ble_task_hdl;
-  xTaskCreate( adafruit_ble_task, "BLE", CFG_BLE_TASK_STACKSIZE, NULL, TASK_PRIO_HIGH, &ble_task_hdl);
+  // TaskHandle_t ble_task_hdl;
+  // xTaskCreate( adafruit_ble_task, "BLE", CFG_BLE_TASK_STACKSIZE, NULL, TASK_PRIO_HIGH, &ble_task_hdl);
 
-  // Create RTOS Semaphore & Task for SOC Event
-  _soc_event_sem = xSemaphoreCreateBinary();
-  VERIFY(_soc_event_sem);
+  // // Create RTOS Semaphore & Task for SOC Event
+  // _soc_event_sem = xSemaphoreCreateBinary();
+  // VERIFY(_soc_event_sem);
 
-  TaskHandle_t soc_task_hdl;
-  xTaskCreate( adafruit_soc_task, "SOC", CFG_SOC_TASK_STACKSIZE, NULL, TASK_PRIO_HIGH, &soc_task_hdl);
+  // TaskHandle_t soc_task_hdl;
+  // xTaskCreate( adafruit_soc_task, "SOC", CFG_SOC_TASK_STACKSIZE, NULL, TASK_PRIO_HIGH, &soc_task_hdl);
 
   NVIC_EnableIRQ(SD_EVT_IRQn); // enable SD interrupt
 
   // Create Timer for led advertising blinky
-  _led_blink_th = xTimerCreate(NULL, ms2tick(CFG_ADV_BLINKY_INTERVAL/2), true, NULL, bluefruit_blinky_cb);
+  // _led_blink_th = xTimerCreate(NULL, ms2tick(CFG_ADV_BLINKY_INTERVAL/2), true, NULL, bluefruit_blinky_cb);
 
   // Initialize bonding
   bond_init();
@@ -566,11 +566,11 @@ void AdafruitBluefruit::autoConnLed(bool enabled)
 
 void AdafruitBluefruit::setConnLedInterval(uint32_t ms)
 {
-  BaseType_t active = xTimerIsTimerActive(_led_blink_th);
-  xTimerChangePeriod(_led_blink_th, ms2tick(ms), 0);
+  // BaseType_t active = xTimerIsTimerActive(_led_blink_th);
+  // xTimerChangePeriod(_led_blink_th, ms2tick(ms), 0);
 
-  // Change period of inactive timer will also start it !!
-  if ( !active ) xTimerStop(_led_blink_th, 0);
+  // // Change period of inactive timer will also start it !!
+  // if ( !active ) xTimerStop(_led_blink_th, 0);
 }
 
 bool AdafruitBluefruit::setAppearance(uint16_t appear)
@@ -674,8 +674,8 @@ bool AdafruitBluefruit::setPIN(const char* pin)
 void SD_EVT_IRQHandler(void)
 {
   // Notify both BLE & SOC Task
-  xSemaphoreGiveFromISR(Bluefruit._soc_event_sem, NULL);
-  xSemaphoreGiveFromISR(Bluefruit._ble_event_sem, NULL);
+  // xSemaphoreGiveFromISR(Bluefruit._soc_event_sem, NULL);
+  // xSemaphoreGiveFromISR(Bluefruit._ble_event_sem, NULL);
 }
 
 /**
@@ -687,7 +687,7 @@ void adafruit_soc_task(void* arg)
 
   while (1)
   {
-    if ( xSemaphoreTake(Bluefruit._soc_event_sem, portMAX_DELAY) )
+    // if ( xSemaphoreTake(Bluefruit._soc_event_sem, portMAX_DELAY) )
     {
       uint32_t soc_evt;
       uint32_t err = ERROR_NONE;
@@ -737,11 +737,11 @@ void adafruit_ble_task(void* arg)
   (void) arg;
 
   // malloc buffered is algined by 4
-  uint8_t * ev_buf = (uint8_t*) rtos_malloc(BLE_EVT_LEN_MAX(BLE_GATT_ATT_MTU_MAX));
+  uint8_t * ev_buf = (uint8_t*) malloc(BLE_EVT_LEN_MAX(BLE_GATT_ATT_MTU_MAX));//rtos_malloc(BLE_EVT_LEN_MAX(BLE_GATT_ATT_MTU_MAX));
 
   while (1)
   {
-    if ( xSemaphoreTake(Bluefruit._ble_event_sem, portMAX_DELAY) )
+    // if ( xSemaphoreTake(Bluefruit._ble_event_sem, portMAX_DELAY) )
     {
       uint32_t err = NRF_SUCCESS;
 
@@ -811,10 +811,10 @@ void AdafruitBluefruit::_ble_handler(ble_evt_t* evt)
       // Invoke connect callback
       if ( conn->getRole() == BLE_GAP_ROLE_PERIPH )
       {
-        if ( Periph._connect_cb ) ada_callback(NULL, 0, Periph._connect_cb, conn_hdl);
+        // if ( Periph._connect_cb ) ada_callback(NULL, 0, Periph._connect_cb, conn_hdl);
       }else
       {
-        if ( Central._connect_cb ) ada_callback(NULL, 0, Central._connect_cb, conn_hdl);
+        // if ( Central._connect_cb ) ada_callback(NULL, 0, Central._connect_cb, conn_hdl);
       }
     }
     break;
@@ -822,6 +822,7 @@ void AdafruitBluefruit::_ble_handler(ble_evt_t* evt)
     case BLE_GAP_EVT_DISCONNECTED:
     {
       ble_gap_evt_disconnected_t const* para = &evt->evt.gap_evt.params.disconnected;
+      (void)para;
 
       LOG_LV2("GAP", "Disconnect Reason: %s", dbg_hci_str(evt->evt.gap_evt.params.disconnected.reason));
 
@@ -831,10 +832,10 @@ void AdafruitBluefruit::_ble_handler(ble_evt_t* evt)
       // Invoke disconnect callback
       if ( conn->getRole() == BLE_GAP_ROLE_PERIPH )
       {
-        if ( Periph._disconnect_cb ) ada_callback(NULL, 0, Periph._disconnect_cb, conn_hdl, para->reason);
+        // if ( Periph._disconnect_cb ) ada_callback(NULL, 0, Periph._disconnect_cb, conn_hdl, para->reason);
       }else
       {
-        if ( Central._disconnect_cb ) ada_callback(NULL, 0, Central._disconnect_cb, conn_hdl, para->reason);
+        // if ( Central._disconnect_cb ) ada_callback(NULL, 0, Central._disconnect_cb, conn_hdl, para->reason);
       }
 
       delete _connection[conn_hdl];
@@ -845,9 +846,10 @@ void AdafruitBluefruit::_ble_handler(ble_evt_t* evt)
     case BLE_GAP_EVT_RSSI_CHANGED:
     {
       ble_gap_evt_rssi_changed_t const * rssi_changed = &evt->evt.gap_evt.params.rssi_changed;
+      (void)rssi_changed;
       if ( _rssi_cb )
       {
-         ada_callback(NULL, 0, _rssi_cb, conn_hdl, rssi_changed->rssi);
+        //  ada_callback(NULL, 0, _rssi_cb, conn_hdl, rssi_changed->rssi);
       }
     }
     break;
@@ -924,22 +926,22 @@ void AdafruitBluefruit::_ble_handler(ble_evt_t* evt)
  *------------------------------------------------------------------*/
 void AdafruitBluefruit::_startConnLed(void)
 {
-  if (_led_conn) xTimerStart(_led_blink_th, 0);
+  // if (_led_conn) xTimerStart(_led_blink_th, 0);
 }
 
 void AdafruitBluefruit::_stopConnLed(void)
 {
-  xTimerStop(_led_blink_th, 0);
+  // xTimerStop(_led_blink_th, 0);
 
   _setConnLed( this->connected() );
 }
 
 void AdafruitBluefruit::_setConnLed (bool on_off)
 {
-  if (_led_conn)
-  {
-    digitalWrite(LED_BLUE, on_off ? LED_STATE_ON : (1-LED_STATE_ON) );
-  }
+  // if (_led_conn)
+  // {
+  //   digitalWrite(LED_BLUE, on_off ? LED_STATE_ON : (1-LED_STATE_ON) );
+  // }
 }
 
 /*------------------------------------------------------------------*/
@@ -969,122 +971,122 @@ void Bluefruit_printInfo(void)
 
 void AdafruitBluefruit::printInfo(void)
 {
-  // Skip if Serial is not initialised
-  if ( !Serial ) return;
+  // // Skip if Serial is not initialised
+  // if ( !Serial ) return;
 
-  // Skip if Bluefruit.begin() is not called
-  if ( _ble_event_sem == NULL ) return;
+  // // Skip if Bluefruit.begin() is not called
+  // if ( _ble_event_sem == NULL ) return;
 
-  Serial.println("--------- SoftDevice Config ---------");
+  // Serial.println("--------- SoftDevice Config ---------");
 
-  char const * title_fmt = "%-16s: ";
+  // char const * title_fmt = "%-16s: ";
 
-  /*------------- SoftDevice Config -------------*/
-  // Max uuid128
-  Serial.printf(title_fmt, "Max UUID128");
-  Serial.println(_sd_cfg.uuid128_max);
+  // /*------------- SoftDevice Config -------------*/
+  // // Max uuid128
+  // Serial.printf(title_fmt, "Max UUID128");
+  // Serial.println(_sd_cfg.uuid128_max);
 
-  // ATTR Table Size
-  Serial.printf(title_fmt, "ATTR Table Size");
-  Serial.println(_sd_cfg.attr_table_size);
+  // // ATTR Table Size
+  // Serial.printf(title_fmt, "ATTR Table Size");
+  // Serial.println(_sd_cfg.attr_table_size);
 
-  // Service Changed
-  Serial.printf(title_fmt, "Service Changed");
-  Serial.println(_sd_cfg.service_changed);
+  // // Service Changed
+  // Serial.printf(title_fmt, "Service Changed");
+  // Serial.println(_sd_cfg.service_changed);
 
-  if ( _prph_count )
-  {
-    Serial.println("Peripheral Connect Setting");
+  // if ( _prph_count )
+  // {
+  //   Serial.println("Peripheral Connect Setting");
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "Max MTU");
-    Serial.println(_sd_cfg.prph.mtu_max);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "Max MTU");
+  //   Serial.println(_sd_cfg.prph.mtu_max);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "Event Length");
-    Serial.println(_sd_cfg.prph.event_len);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "Event Length");
+  //   Serial.println(_sd_cfg.prph.event_len);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "HVN Queue Size");
-    Serial.println(_sd_cfg.prph.hvn_qsize);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "HVN Queue Size");
+  //   Serial.println(_sd_cfg.prph.hvn_qsize);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "WrCmd Queue Size");
-    Serial.println(_sd_cfg.prph.wrcmd_qsize);
-  }
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "WrCmd Queue Size");
+  //   Serial.println(_sd_cfg.prph.wrcmd_qsize);
+  // }
 
-  if ( _central_count )
-  {
-    Serial.println("Central Connect Setting");
+  // if ( _central_count )
+  // {
+  //   Serial.println("Central Connect Setting");
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "Max MTU");
-    Serial.println(_sd_cfg.central.mtu_max);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "Max MTU");
+  //   Serial.println(_sd_cfg.central.mtu_max);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "Event Length");
-    Serial.println(_sd_cfg.central.event_len);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "Event Length");
+  //   Serial.println(_sd_cfg.central.event_len);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "HVN Queue Size");
-    Serial.println(_sd_cfg.central.hvn_qsize);
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "HVN Queue Size");
+  //   Serial.println(_sd_cfg.central.hvn_qsize);
 
-    Serial.print("  - ");
-    Serial.printf(title_fmt, "WrCmd Queue Size");
-    Serial.println(_sd_cfg.central.wrcmd_qsize);
-  }
+  //   Serial.print("  - ");
+  //   Serial.printf(title_fmt, "WrCmd Queue Size");
+  //   Serial.println(_sd_cfg.central.wrcmd_qsize);
+  // }
 
-  /*------------- Settings -------------*/
-  Serial.println("\n--------- BLE Settings ---------");
-  // Name
-  Serial.printf(title_fmt, "Name");
-  {
-    char name[32];
-    memclr(name, sizeof(name));
-    getName(name, sizeof(name));
-    Serial.printf(name);
-  }
-  Serial.println();
+  // /*------------- Settings -------------*/
+  // Serial.println("\n--------- BLE Settings ---------");
+  // // Name
+  // Serial.printf(title_fmt, "Name");
+  // {
+  //   char name[32];
+  //   memclr(name, sizeof(name));
+  //   getName(name, sizeof(name));
+  //   Serial.printf(name);
+  // }
+  // Serial.println();
 
-  // Max Connections
-  Serial.printf(title_fmt, "Max Connections");
-  Serial.printf("Peripheral = %d, ", _prph_count);
-  Serial.printf("Central = %d ", _central_count);
-  Serial.println();
+  // // Max Connections
+  // Serial.printf(title_fmt, "Max Connections");
+  // Serial.printf("Peripheral = %d, ", _prph_count);
+  // Serial.printf("Central = %d ", _central_count);
+  // Serial.println();
 
-  // Address
-  Serial.printf(title_fmt, "Address");
-  {
-    char const * type_str[] = { "Public", "Static", "Private Resolvable", "Private Non Resolvable" };
-    ble_gap_addr_t gap_addr = this->getAddr();
+  // // Address
+  // Serial.printf(title_fmt, "Address");
+  // {
+  //   char const * type_str[] = { "Public", "Static", "Private Resolvable", "Private Non Resolvable" };
+  //   ble_gap_addr_t gap_addr = this->getAddr();
 
-    // MAC is in little endian --> print reverse
-    Serial.printBufferReverse(gap_addr.addr, 6, ':');
-    Serial.printf(" (%s)", type_str[gap_addr.addr_type]);
-  }
-  Serial.println();
+  //   // MAC is in little endian --> print reverse
+  //   Serial.printBufferReverse(gap_addr.addr, 6, ':');
+  //   Serial.printf(" (%s)", type_str[gap_addr.addr_type]);
+  // }
+  // Serial.println();
 
-  // Tx Power
-  Serial.printf(title_fmt, "TX Power");
-  Serial.printf("%d dBm", _tx_power);
-  Serial.println();
+  // // Tx Power
+  // Serial.printf(title_fmt, "TX Power");
+  // Serial.printf("%d dBm", _tx_power);
+  // Serial.println();
 
-  Periph.printInfo();
+  // Periph.printInfo();
 
-  /*------------- List the paried device -------------*/
-  if ( _prph_count )
-  {
-    Serial.printf(title_fmt, "Peripheral Paired Devices");
-    Serial.println();
-    bond_print_list(BLE_GAP_ROLE_PERIPH);
-  }
+  // /*------------- List the paried device -------------*/
+  // if ( _prph_count )
+  // {
+  //   Serial.printf(title_fmt, "Peripheral Paired Devices");
+  //   Serial.println();
+  //   bond_print_list(BLE_GAP_ROLE_PERIPH);
+  // }
 
-  if ( _central_count )
-  {
-    Serial.printf(title_fmt, "Central Paired Devices");
-    Serial.println();
-    bond_print_list(BLE_GAP_ROLE_CENTRAL);
-  }
+  // if ( _central_count )
+  // {
+  //   Serial.printf(title_fmt, "Central Paired Devices");
+  //   Serial.println();
+  //   bond_print_list(BLE_GAP_ROLE_CENTRAL);
+  // }
 
-  Serial.println();
+  // Serial.println();
 }

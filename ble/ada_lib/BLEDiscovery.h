@@ -36,7 +36,6 @@
 #ifndef BLEDISCOVERY_H_
 #define BLEDISCOVERY_H_
 
-#include <Arduino.h>
 #include "bluefruit_common.h"
 #include "BLEClientCharacteristic.h"
 

@@ -110,7 +110,7 @@ uint8_t BLEDiscovery::discoverCharacteristic(uint16_t conn_handle, BLEClientChar
   enum { MAX_DISC_CHARS = 4 };
 
   uint16_t bufsize = sizeof(ble_gattc_evt_char_disc_rsp_t) + (MAX_DISC_CHARS-1)*sizeof(ble_gattc_char_t);
-  ble_gattc_evt_char_disc_rsp_t* disc_chr = (ble_gattc_evt_char_disc_rsp_t*) rtos_malloc( bufsize );
+  ble_gattc_evt_char_disc_rsp_t* disc_chr = (ble_gattc_evt_char_disc_rsp_t*) malloc( bufsize );//rtos_malloc( bufsize );
 
   uint8_t found = 0;
 
@@ -174,7 +174,7 @@ uint8_t BLEDiscovery::discoverCharacteristic(uint16_t conn_handle, BLEClientChar
     _hdl_range.start_handle = disc_chr->chars[ disc_chr->count-1  ].handle_value + 1;
   }
 
-  rtos_free(disc_chr);
+  free(disc_chr);//rtos_free(disc_chr);
 
   return found;
 }

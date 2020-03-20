@@ -24,7 +24,6 @@
 #ifndef BLUEFRUIT_H_
 #define BLUEFRUIT_H_
 
-#include <Arduino.h>
 #include "bluefruit_common.h"
 
 #define CFG_ADV_BLINKY_INTERVAL   500
@@ -56,25 +55,7 @@
 #include "BLEConnection.h"
 #include "BLEGatt.h"
 
-// Services
-#include "services/BLEDis.h"
-#include "services/BLEDfu.h"
-#include "services/BLEUart.h"
-#include "services/BLEBas.h"
-#include "services/BLEBeacon.h"
-#include "services/BLEHidGeneric.h"
-#include "services/BLEHidAdafruit.h"
-#include "services/BLEMidi.h"
-#include "services/EddyStone.h"
-
-#include "clients/BLEAncs.h"
-#include "clients/BLEClientUart.h"
-#include "clients/BLEClientDis.h"
-#include "clients/BLEClientCts.h"
-#include "clients/BLEClientHidAdafruit.h"
-#include "clients/BLEClientBas.h"
-
-#include "utility/AdaCallback.h"
+// #include "utility/AdaCallback.h"
 #include "utility/bonding.h"
 
 enum
@@ -220,10 +201,10 @@ class AdafruitBluefruit
 
     ble_gap_sec_params_t _sec_param;
 
-    SemaphoreHandle_t _ble_event_sem;
-    SemaphoreHandle_t _soc_event_sem;
+    // SemaphoreHandle_t _ble_event_sem;
+    // SemaphoreHandle_t _soc_event_sem;
 
-    TimerHandle_t _led_blink_th;
+    // TimerHandle_t _led_blink_th;
     bool _led_conn;
 
     uint16_t _conn_hdl;

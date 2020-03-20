@@ -36,14 +36,16 @@
 #ifndef ADAMSG_H_
 #define ADAMSG_H_
 
-#include "Arduino.h"
+#include <stddef.h>
+#include <stdbool.h>
+#include <stdint.h>
 
 class AdaMsg
 {
   private:
     bool              _dynamic;
     volatile bool     _waiting;
-    SemaphoreHandle_t _sem;
+    // SemaphoreHandle_t _sem;
 
     void              _init(void);
 

@@ -52,23 +52,23 @@ BLEConnection::BLEConnection(uint16_t conn_hdl, ble_gap_evt_connected_t const* e
   _peer_addr = evt_connected->peer_addr;
   _role = evt_connected->role;
 
-  _hvn_sem   = xSemaphoreCreateCounting(hvn_qsize, hvn_qsize);
-  _wrcmd_sem = xSemaphoreCreateCounting(wrcmd_qsize, wrcmd_qsize);
+  // _hvn_sem   = xSemaphoreCreateCounting(hvn_qsize, hvn_qsize);
+  // _wrcmd_sem = xSemaphoreCreateCounting(wrcmd_qsize, wrcmd_qsize);
 
   _paired = false;
-  _hvc_sem = NULL;
+  // _hvc_sem = NULL;
   _hvc_received = false;
-  _pair_sem = NULL;
+  // _pair_sem = NULL;
   _ediv = 0xFFFF; // invalid ediv value
   _bond_keys = NULL;
 }
 
 BLEConnection::~BLEConnection()
 {
-  vSemaphoreDelete( _hvn_sem );
-  vSemaphoreDelete( _wrcmd_sem );
+  // vSemaphoreDelete( _hvn_sem );
+  // vSemaphoreDelete( _wrcmd_sem );
 
-  if ( _hvc_sem ) vSemaphoreDelete( _hvc_sem );
+  // if ( _hvc_sem ) vSemaphoreDelete( _hvc_sem );
 }
 
 uint16_t BLEConnection::handle (void)
@@ -207,17 +207,17 @@ void BLEConnection::stopRssi(void)
 
 bool BLEConnection::getHvnPacket (void)
 {
-  return xSemaphoreTake(_hvn_sem, ms2tick(BLE_GENERIC_TIMEOUT));
+  return false;//xSemaphoreTake(_hvn_sem, ms2tick(BLE_GENERIC_TIMEOUT));
 }
 
 bool BLEConnection::releaseHvnPacket(void)
 {
-  return xSemaphoreGive(_hvn_sem);
+  return false;//xSemaphoreGive(_hvn_sem);
 }
 
 bool BLEConnection::getWriteCmdPacket (void)
 {
-  return xSemaphoreTake(_wrcmd_sem, ms2tick(BLE_GENERIC_TIMEOUT));
+  return false;//xSemaphoreTake(_wrcmd_sem, ms2tick(BLE_GENERIC_TIMEOUT));
 }
 
 bool BLEConnection::storeCccd(void)
@@ -238,12 +238,12 @@ bool BLEConnection::requestPairing(void)
   ble_gap_sec_params_t sec_param = Bluefruit.getSecureParam();
 
   // on-the-fly semaphore
-  _pair_sem = xSemaphoreCreateBinary();
+  // _pair_sem = xSemaphoreCreateBinary();
 
   if ( _role == BLE_GAP_ROLE_PERIPH )
   {
     VERIFY_STATUS( sd_ble_gap_authenticate(_conn_hdl, &sec_param ), false);
-    xSemaphoreTake(_pair_sem, portMAX_DELAY);
+    // xSemaphoreTake(_pair_sem, portMAX_DELAY);
   }
   else
   {
@@ -255,7 +255,7 @@ bool BLEConnection::requestPairing(void)
     if ( bond_find_cntr(&_peer_addr, &bkeys) )
     {
       cntr_ediv = bkeys.peer_enc.master_id.ediv;
-      LOG_LV2("BOND", "Load Keys from file " BOND_FNAME_CNTR, cntr_ediv);
+      // LOG_LV2("BOND", "Load Keys from file " BOND_FNAME_CNTR, cntr_ediv);
       VERIFY_STATUS( sd_ble_gap_encrypt(_conn_hdl, &bkeys.peer_enc.master_id, &bkeys.peer_enc.enc_info), false);
 
     }else
@@ -263,7 +263,7 @@ bool BLEConnection::requestPairing(void)
       VERIFY_STATUS( sd_ble_gap_authenticate(_conn_hdl, &sec_param ), false);
     }
 
-    xSemaphoreTake(_pair_sem, portMAX_DELAY);
+    // xSemaphoreTake(_pair_sem, portMAX_DELAY);
 
     // Failed to pair using central stored keys, this happens when
     // Prph delete bonds while we did not --> let's remove the obsolete keyfile and retry
@@ -274,12 +274,12 @@ bool BLEConnection::requestPairing(void)
       // Re-try with a fresh session
       VERIFY_STATUS( sd_ble_gap_authenticate(_conn_hdl, &sec_param ), false);
 
-      xSemaphoreTake(_pair_sem, portMAX_DELAY);
+      // xSemaphoreTake(_pair_sem, portMAX_DELAY);
     }
   }
 
-  vSemaphoreDelete(_pair_sem);
-  _pair_sem = NULL;
+  // vSemaphoreDelete(_pair_sem);
+  // _pair_sem = NULL;
 
   return _paired;
 }
@@ -287,13 +287,13 @@ bool BLEConnection::requestPairing(void)
 bool BLEConnection::waitForIndicateConfirm(void)
 {
   // on the fly semaphore
-  _hvc_sem = xSemaphoreCreateBinary();
+  // _hvc_sem = xSemaphoreCreateBinary();
 
   _hvc_received = false;
-  xSemaphoreTake(_hvc_sem, portMAX_DELAY);
+  // xSemaphoreTake(_hvc_sem, portMAX_DELAY);
 
-  vSemaphoreDelete(_hvc_sem);
-  _hvc_sem = NULL;
+  // vSemaphoreDelete(_hvc_sem);
+  // _hvc_sem = NULL;
 
   return _hvc_received;
 }
@@ -326,7 +326,7 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
     case BLE_GAP_EVT_SEC_PARAMS_REQUEST:
     {
       // Pairing in progress, Peer asking for our info
-      _bond_keys = (bond_keys_t*) rtos_malloc( sizeof(bond_keys_t));
+      _bond_keys = (bond_keys_t*) malloc( sizeof(bond_keys_t));//rtos_malloc( sizeof(bond_keys_t));
       VERIFY(_bond_keys, );
       memclr(_bond_keys, sizeof(bond_keys_t));
 
@@ -389,7 +389,7 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
         PRINT_HEX(status->auth_status);
       }
 
-      rtos_free(_bond_keys);
+      free(_bond_keys);// rtos_free(_bond_keys);
       _bond_keys = NULL;
     }
     break;
@@ -443,7 +443,7 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
         _paired = true;
       }
 
-      if (_pair_sem) xSemaphoreGive(_pair_sem);
+      // if (_pair_sem) xSemaphoreGive(_pair_sem);
     }
     break;
 
@@ -538,11 +538,11 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
     //
     //--------------------------------------------------------------------+
     case BLE_GATTS_EVT_HVN_TX_COMPLETE:
-      for(uint8_t i=0; i<evt->evt.gatts_evt.params.hvn_tx_complete.count; i++) xSemaphoreGive(_hvn_sem);
+      // for(uint8_t i=0; i<evt->evt.gatts_evt.params.hvn_tx_complete.count; i++) xSemaphoreGive(_hvn_sem);
     break;
 
     case BLE_GATTC_EVT_WRITE_CMD_TX_COMPLETE:
-      for(uint8_t i=0; i<evt->evt.gattc_evt.params.write_cmd_tx_complete.count; i++) xSemaphoreGive(_wrcmd_sem);
+      // for(uint8_t i=0; i<evt->evt.gattc_evt.params.write_cmd_tx_complete.count; i++) xSemaphoreGive(_wrcmd_sem);
     break;
 
     case BLE_GATTS_EVT_HVC:
@@ -550,7 +550,7 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
       LOG_LV2("GATTS", "Confirm received handle = 0x%04X", evt->evt.gatts_evt.params.hvc.handle);
 
       _hvc_received = true;
-      if ( _hvc_sem ) xSemaphoreGive(_hvc_sem);
+      // if ( _hvc_sem ) xSemaphoreGive(_hvc_sem);
     }
     break;
 
@@ -562,7 +562,7 @@ void BLEConnection::_eventHandler(ble_evt_t* evt)
       if (BLE_GATT_TIMEOUT_SRC_PROTOCOL == timeout_src)
       {
         _hvc_received = false;
-        if ( _hvc_sem ) xSemaphoreGive(_hvc_sem);
+        // if ( _hvc_sem ) xSemaphoreGive(_hvc_sem);
       }
     }
     break;

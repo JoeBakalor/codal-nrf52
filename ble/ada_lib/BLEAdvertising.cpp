@@ -320,16 +320,6 @@ bool BLEAdvertising::isRunning(void)
   return _runnning;
 }
 
-bool BLEAdvertising::setBeacon(BLEBeacon& beacon)
-{
-  return beacon.start(*this);
-}
-
-bool BLEAdvertising::setBeacon(EddyStoneUrl& eddy_url)
-{
-  return eddy_url.start();
-}
-
 void BLEAdvertising::restartOnDisconnect(bool enable)
 {
   _start_if_disconnect = enable;
@@ -351,7 +341,8 @@ bool BLEAdvertising::_start(uint16_t interval, uint16_t timeout)
 
     .primary_phy   = BLE_GAP_PHY_AUTO         , // 1 Mbps will be used
     .secondary_phy = BLE_GAP_PHY_AUTO         , // 1 Mbps will be used
-      // , .set_id, .scan_req_notification
+    .set_id        = 4,
+    .scan_req_notification = 1
   };
 
   // gap_adv long-live is required by SD v6
@@ -456,7 +447,7 @@ void BLEAdvertising::_eventHandler(ble_evt_t* evt)
             Bluefruit._stopConnLed(); // stop blinking
 
             // invoke stop callback
-            if (_stop_cb) ada_callback(NULL, 0, _stop_cb);
+            // if (_stop_cb) ada_callback(NULL, 0, _stop_cb);
           }
         }
       }

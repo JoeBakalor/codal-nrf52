@@ -37,7 +37,6 @@
 #ifndef BLECONNECTION_H_
 #define BLECONNECTION_H_
 
-#include <Arduino.h>
 #include "bluefruit_common.h"
 #include "utility/bonding.h"
 
@@ -59,13 +58,13 @@ class BLEConnection
 
     ble_gap_addr_t _peer_addr;
 
-    SemaphoreHandle_t _hvn_sem;
-    SemaphoreHandle_t _wrcmd_sem;
+    // SemaphoreHandle_t _hvn_sem;
+    // SemaphoreHandle_t _wrcmd_sem;
 
     // On-demand semaphore/data that are created on the fly
-    SemaphoreHandle_t _hvc_sem;
+    // SemaphoreHandle_t _hvc_sem;
 
-    SemaphoreHandle_t _pair_sem;
+    // SemaphoreHandle_t _pair_sem;
     bond_keys_t*     _bond_keys; // Shared keys with bonded device, size ~ 80 bytes
 
   public:

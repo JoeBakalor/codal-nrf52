@@ -36,7 +36,6 @@
 #ifndef BLEGATT_H_
 #define BLEGATT_H_
 
-#include <Arduino.h>
 #include "bluefruit_common.h"
 
 #include "BLEUuid.h"

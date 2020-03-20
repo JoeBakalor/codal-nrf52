@@ -35,12 +35,13 @@
 /**************************************************************************/
 
 #include "AdaMsg.h"
+#include "common_func.h"
 
 void AdaMsg::_init(void)
 {
   _dynamic = true;
   _waiting = false;
-  _sem     = NULL;
+  // _sem     = NULL;
 
   buffer  = NULL;
   remaining = xferlen = 0;
@@ -57,13 +58,13 @@ void AdaMsg::begin(bool dynamic)
   _dynamic = dynamic;
   if ( !_dynamic )
   {
-    _sem = xSemaphoreCreateCounting(10, 0);
+    // _sem = xSemaphoreCreateCounting(10, 0);
   }
 }
 
 void AdaMsg::stop(void)
 {
-  if (!_dynamic) vSemaphoreDelete(_sem);
+  // if (!_dynamic) vSemaphoreDelete(_sem);
   _init();
 }
 
@@ -81,26 +82,26 @@ void AdaMsg::prepare(void* buf, uint16_t bufsize)
  */
 int32_t AdaMsg::waitUntilComplete(uint32_t ms)
 {
-  if (_dynamic)
-  {
-    _sem = xSemaphoreCreateBinary();
-    VERIFY(_sem, -1);
-  }
+  // if (_dynamic)
+  // {
+  //   _sem = xSemaphoreCreateBinary();
+  //   VERIFY(_sem, -1);
+  // }
 
   int result = -1;
 
   _waiting = true;
-  if ( xSemaphoreTake(_sem, ms2tick(ms) ) )
-  {
-    result = xferlen;
-  }
+  // if ( xSemaphoreTake(_sem, ms2tick(ms) ) )
+  // {
+  //   result = xferlen;
+  // }
   _waiting = false;
 
-  if (_dynamic)
-  {
-    vSemaphoreDelete(_sem);
-    _sem = NULL;
-  }
+  // if (_dynamic)
+  // {
+  //   vSemaphoreDelete(_sem);
+  //   _sem = NULL;
+  // }
 
   return result;
 }
@@ -126,6 +127,6 @@ uint16_t AdaMsg::feed(void* data, uint16_t len)
 
 void AdaMsg::complete(void)
 {
-  if(_sem) xSemaphoreGive(_sem);
+  // if(_sem) xSemaphoreGive(_sem);
 }
 

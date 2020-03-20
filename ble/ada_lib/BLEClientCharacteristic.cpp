@@ -413,8 +413,8 @@ void BLEClientCharacteristic::_eventHandler(ble_evt_t* evt)
           if (_notify_cb)
           {
             // use AdaCallback or invoke directly
-            if ( !(_use_ada_cb.notify &&
-                   ada_callback(hvx->data, hvx->len, _notify_cb, this, hvx->data, hvx->len)) )
+            if ( !(_use_ada_cb.notify))// &&
+                  //  ada_callback(hvx->data, hvx->len, _notify_cb, this, hvx->data, hvx->len)) )
             {
               _notify_cb(this, hvx->data, hvx->len);
             }
@@ -425,8 +425,8 @@ void BLEClientCharacteristic::_eventHandler(ble_evt_t* evt)
           if (_indicate_cb)
           {
             // use AdaCallback or invoke directly
-            if ( !(_use_ada_cb.indicate &&
-                   ada_callback(hvx->data, hvx->len, _indicate_cb, this, hvx->data, hvx->len)) )
+            if ( !(_use_ada_cb.indicate))// &&
+                  //  ada_callback(hvx->data, hvx->len, _indicate_cb, this, hvx->data, hvx->len)) )
             {
               _indicate_cb(this, hvx->data, hvx->len);
             }
@@ -491,7 +491,10 @@ void BLEClientCharacteristic::_eventHandler(ble_evt_t* evt)
           {
               .write_op = BLE_GATT_OP_EXEC_WRITE_REQ,
               .flags    = BLE_GATT_EXEC_WRITE_FLAG_PREPARED_WRITE,
-              .handle   = _chr.handle_value
+              .handle   = _chr.handle_value,
+              .offset   = 0,
+              .len      = 0,
+              .p_value  = NULL
           };
 
           sd_ble_gattc_write(_service->connHandle(), &param);

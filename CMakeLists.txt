@@ -5,13 +5,16 @@ string(FIND "${device.processor}" "NRF52833" pos33)
 if (NOT "${pos40}" STREQUAL "-1")
     set(TEMPLATE "nRF52840")
     set(DEV "nrf52840")
+    set(SD "s140")
 else()
 if (NOT "${pos33}" STREQUAL "-1")
     set(TEMPLATE "nRF52833")
     set(DEV "nrf52833")
+    set(SD "s132")
 else()
     set(TEMPLATE "nRF52832")
     set(DEV "nrf52")
+    set(SD "s132")
 endif()
 endif()
 
@@ -19,6 +22,8 @@ include("${CODAL_UTILS_LOCATION}")
 
 # find sources and headers
 RECURSIVE_FIND_FILE(SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/source" "*.c??")
+
+RECURSIVE_FIND_FILE(BLE_SOURCE_FILES "${CMAKE_CURRENT_SOURCE_DIR}/ble" "*.c??")
 
 list(APPEND INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/inc"
@@ -28,6 +33,9 @@ list(APPEND INCLUDE_DIRS
     "${CMAKE_CURRENT_SOURCE_DIR}/nrfx/templates/"
     "${CMAKE_CURRENT_SOURCE_DIR}/nrfx/templates/${TEMPLATE}"
     "${CMAKE_CURRENT_SOURCE_DIR}/nrfx/drivers/include"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ble/ada_lib"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ble/softdevice/${SD}/headers"
+    "${CMAKE_CURRENT_SOURCE_DIR}/ble/softdevice/${SD}/headers/nrf52"
 )
 
 list(APPEND SOURCE_FILES "asm/CortexContextSwitch.s")
@@ -40,7 +48,7 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -DNRFX_PRS_ENABLED=0")
 include_directories(${INCLUDE_DIRS})
 
 # create our target
-add_library(codal-nrf52 ${SOURCE_FILES})
+add_library(codal-nrf52 ${SOURCE_FILES} ${BLE_SOURCE_FILES})
 
 target_link_libraries(
     codal-nrf52

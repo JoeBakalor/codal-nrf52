@@ -36,11 +36,19 @@
 #ifndef BLUEFRUIT_COMMON_H_
 #define BLUEFRUIT_COMMON_H_
 
-#include <Arduino.h>
+#include <stddef.h>
+#include <stdlib.h>
+
+#include "codal_target_hal.h"
+
 #include "ble.h"
 #include "nrf_sdm.h"
 
+#include "utility/common_func.h"
+#include "utility/verify.h"
 #include "utility/AdaMsg.h"
+
+#define USE_LFRC 1
 
 #define CFG_MAX_DEVNAME_LEN                     32
 
