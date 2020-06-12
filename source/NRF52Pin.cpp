@@ -418,7 +418,7 @@ int NRF52Pin::getAnalogValue()
         return DEVICE_NOT_SUPPORTED;
     
     // find existiong channel
-    for(int i = 0; i < NRF52PIN_SSADC_MHANNEL_MAP_SIZE; i++)
+    for(int i = 0; i < NRF52PIN_SAADC_CHANNEL_MAP_SIZE; i++)
     {
         if(saadcChannelMap[i] == name)
         {
