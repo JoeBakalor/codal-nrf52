@@ -38,7 +38,7 @@ DEALINGS IN THE SOFTWARE.
 
 
 using namespace codal;
-
+#define NRF_P1
 #ifdef NRF_P1
 #define PORT (name < 32 ? NRF_P0 : NRF_P1)
 #define PIN ((name) & 31)
@@ -67,7 +67,7 @@ extern "C" {
 #endif
 void GPIOTE_IRQHandler(void)
 {
-    if (NRF_GPIOTE->EVENTS_PORT)
+    if (NRF_GPIOTE->EVENTS_PORT) 
     {
         NRF_GPIOTE->EVENTS_PORT = 0;
         for (uint8_t i = 0; i <= 31; i++)
