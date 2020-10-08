@@ -38,16 +38,16 @@ DEALINGS IN THE SOFTWARE.
 
 
 using namespace codal;
-#define NRF_P1
-#ifdef NRF_P1
+
+//#ifdef NRF_P1
 #define PORT (name < 32 ? NRF_P0 : NRF_P1)
 #define PIN ((name) & 31)
 #define NUM_PINS 48
-#else
-#define PORT (NRF_P0)
-#define PIN (name)
-#define NUM_PINS 32
-#endif
+// #else
+// #define PORT (NRF_P0)
+// #define PIN (name)
+// #define NUM_PINS 32
+// #endif
 
 volatile uint32_t interrupt_enable = 0;
 
