@@ -59,13 +59,8 @@ uint16_t NRF52Pin::pwmBuffer[NRF52PIN_PWM_CHANNEL_MAP_SIZE] = {0,0,0,0};
 int8_t NRF52Pin::pwmChannelMap[NRF52PIN_PWM_CHANNEL_MAP_SIZE] = {-1,-1,-1,-1};
 uint8_t NRF52Pin::lastUsedChannel = 3;
 
-<<<<<<< HEAD
-int16_t NRF52Pin::adcSample = 0;
-int8_t NRF52Pin::saadcChannelMap[NRF52PIN_SAADC_CHANNEL_MAP_SIZE] = {2,3,4,5,28,29,30,31};
-=======
 NRF52ADC* NRF52Pin::adc = NULL;
 TouchSensor* NRF52Pin::touchSensor = NULL;
->>>>>>> 3bb82f2f1692f8b08b0ee424f0cb60224028d6a8
 
 #ifdef __cplusplus
 extern "C" {
@@ -73,9 +68,6 @@ extern "C" {
 
 static void process_gpio_irq(NRF_GPIO_Type* GPIO_PORT, int pinNumberOffset)
 {
-<<<<<<< HEAD
-    if (NRF_GPIOTE->EVENTS_PORT) 
-=======
     uint32_t    pinNumber;
     uint32_t    latch;
     NRF52Pin    *pin;
@@ -85,7 +77,6 @@ static void process_gpio_irq(NRF_GPIO_Type* GPIO_PORT, int pinNumberOffset)
 
     // Handle any events raised on this port.
     while(latch)
->>>>>>> 3bb82f2f1692f8b08b0ee424f0cb60224028d6a8
     {
         // Determine the most significant pin that has changed.
         asm("mov r11, #31              \r\n"
@@ -487,55 +478,6 @@ int NRF52Pin::getAnalogValue()
 {
     int channel = -1;
 
-<<<<<<< HEAD
-    // check if this pin has an analogue mode...
-    if(!(PIN_CAPABILITY_ANALOG & capability))
-        return DEVICE_NOT_SUPPORTED;
-    
-    // find existiong channel
-    for(int i = 0; i < NRF52PIN_SAADC_CHANNEL_MAP_SIZE; i++)
-    {
-        if(saadcChannelMap[i] == name)
-        {
-            channel = i+1; 
-            break;
-        }
-            
-    }
-
-    // no existing channel found
-    if (channel == -1) return DEVICE_NOT_SUPPORTED;
-    else
-    {
-        initialiseSAADC();
-    }
-    
-    // Configure SAADC singled-ended channel, Internal reference (VDD/4) and 1/4 gain.
-    // Can use +- 3.3V
-    NRF_SAADC->CH[0].CONFIG = (SAADC_CH_CONFIG_GAIN_Gain1_4    << SAADC_CH_CONFIG_GAIN_Pos) |
-                              (SAADC_CH_CONFIG_MODE_SE         << SAADC_CH_CONFIG_MODE_Pos) |
-                              (SAADC_CH_CONFIG_REFSEL_VDD1_4 << SAADC_CH_CONFIG_REFSEL_Pos) |
-                              (SAADC_CH_CONFIG_RESN_Bypass     << SAADC_CH_CONFIG_RESN_Pos) |
-                              (SAADC_CH_CONFIG_RESP_Bypass     << SAADC_CH_CONFIG_RESP_Pos) |
-                              (SAADC_CH_CONFIG_TACQ_10us        << SAADC_CH_CONFIG_TACQ_Pos);
-
-    // Configure the SAADC channel with VDD as positive input, no negative input(single ended).
-    NRF_SAADC->CH[0].PSELP = ((unsigned long)channel) << SAADC_CH_PSELP_PSELP_Pos;
-    NRF_SAADC->CH[0].PSELN = SAADC_CH_PSELN_PSELN_NC << SAADC_CH_PSELN_PSELN_Pos;
-    
-    // Start the SAADC and wait for the started event.
-    NRF_SAADC->TASKS_START = 1;
-    while (NRF_SAADC->EVENTS_STARTED == 0);
-    NRF_SAADC->EVENTS_STARTED = 0;
-
-    // Do a SAADC sample, will put the result in the configured RAM buffer.
-    NRF_SAADC->TASKS_SAMPLE = 1;
-    while (NRF_SAADC->EVENTS_END == 0);
-    NRF_SAADC->EVENTS_END = 0;
-
-    if(adcSample < 0) return 0;
-    else return adcSample;
-=======
     // //check if this pin has an analogue mode...
     if(!(PIN_CAPABILITY_ANALOG & capability))
         return DEVICE_NOT_SUPPORTED;
@@ -556,7 +498,6 @@ int NRF52Pin::getAnalogValue()
     }
 
     return DEVICE_NOT_SUPPORTED;
->>>>>>> 3bb82f2f1692f8b08b0ee424f0cb60224028d6a8
 }
 
 /**
