@@ -8,24 +8,38 @@
 #include "Serial.h"
 #include "hal/nrf_uarte.h"
 
+#ifndef CONFIG_SERIAL_DMA_BUFFER_SIZE
+#define CONFIG_SERIAL_DMA_BUFFER_SIZE   32
+#endif
+
 namespace codal
 {
     class NRF52Serial : public Serial
     {
-        bool is_tx_in_progress_;
+        volatile bool is_tx_in_progress_;
+        volatile int  bytesProcessed;
+        uint8_t dmaBuffer[CONFIG_SERIAL_DMA_BUFFER_SIZE];
 
         NRF_UARTE_Type *p_uarte_;
         static void _irqHandler(void *self);
 
         /**
-          * Update DMA RX buffer pointer through ring buffer management.
-          * 
-          * UARTE generates an event called ENDRX when the specified buffer is full.
-          * It is necessary to command STARTRX again after clearing the ENDRX event.
-          * This function is to set the start address and size of the ring buffer 
-          * that can be received in consideration of the data unread by the user in the ring buffer.
-        **/
+         * Ensures all characters have been processed once a DMA buffer is fully received.
+         *
+         * This function is called upon an ENDRX hardware event, which is raised when a RX DMA buffer
+         * has been filled. Normally there is nothing to do, but in the eventuality that an interrupt has been
+         * missed (typically due to CPU contention), this function ensures the codal Serial ringbuffer is synchronised
+         * and no characters are lost.
+         */
         void updateRxBufferAfterENDRX();
+
+        /**
+          * Update DMA RX buffer pointer.
+          * 
+          * UARTE generates an RXSTARTED event once the DMA buffer geometry has been read.
+          * This function implements a DMA enabled double buffer within the codal Serial ringbuffer.
+        **/
+        void updateRxBufferAfterRXSTARTED();
 
         /**
           * DMA version of Serial::dataReceviced()
@@ -40,7 +54,6 @@ namespace codal
         protected:
         virtual int enableInterrupt(SerialInterruptType t) override;
         virtual int disableInterrupt(SerialInterruptType t) override;
-        virtual int setBaudrate(uint32_t baudrate) override;
         virtual int configurePins(Pin& tx, Pin& rx) override;
 
         public:
@@ -57,6 +70,12 @@ namespace codal
 
         virtual int putc(char) override;
         virtual int getc() override;
+        virtual int setBaudrate(uint32_t baudrate) override;
+
+        /**
+          * Puts the component in (or out of) sleep (low power) mode.
+          */
+        virtual int setSleep(bool doSleep) override;
 
         ~NRF52Serial();
     };

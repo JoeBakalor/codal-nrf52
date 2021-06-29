@@ -1,38 +1,48 @@
 #include "NRF52PWM.h"
 #include "nrf.h"
 #include "cmsis.h"
-#include "CodalDmesg.h"
 
-// Handles on the instances of this class used the three PWM modules (if present)
-static NRF52PWM *nrf52_pwm_driver[3] = { NULL };
+#define  NRF52PWM_EMPTY_BUFFERSIZE  8
+static uint16_t emptyBuffer[NRF52PWM_EMPTY_BUFFERSIZE];
 
 void nrf52_pwm0_irq(void)
 {
     // Simply pass on to the driver component handler.
-    if (nrf52_pwm_driver[0])
-        nrf52_pwm_driver[0]->irq();
+    if (NRF52PWM::nrf52_pwm_driver[0])
+        NRF52PWM::nrf52_pwm_driver[0]->irq();
 }
 
 void nrf52_pwm1_irq(void)
 {
     // Simply pass on to the driver component handler.
-    if (nrf52_pwm_driver[1])
-        nrf52_pwm_driver[1]->irq();
+    if (NRF52PWM::nrf52_pwm_driver[1])
+        NRF52PWM::nrf52_pwm_driver[1]->irq();
 }
 
 void nrf52_pwm2_irq(void)
 {
     // Simply pass on to the driver component handler.
-    if (nrf52_pwm_driver[2])
-        nrf52_pwm_driver[2]->irq();
+    if (NRF52PWM::nrf52_pwm_driver[2])
+        NRF52PWM::nrf52_pwm_driver[2]->irq();
 }
 
-NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uint16_t id) : PWM(*module), upstream(source)
+// Handles on the instances of this class used the three PWM modules (if present)
+NRF52PWM* NRF52PWM::nrf52_pwm_driver[NRF52PWM_PWM_PERIPHERALS] = { NULL };
+
+NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, float sampleRate, uint16_t id) : PWM(*module), upstream(source)
 {
     // initialise state
     this->id = id;
     this->dataReady = 0;
     this->active = false;
+    this->streaming = true;
+    this->repeatOnEmpty = true;
+    this->bufferPlaying = 0;
+    this->stopStreamingAfterBuf = 0;
+
+    // Clear empty buffer
+    for (int i=0; i<NRF52PWM_EMPTY_BUFFERSIZE; i++)
+        emptyBuffer[i] = 0x8000;
 
     // Ensure PWM is currently disabled.
     disable();
@@ -43,9 +53,6 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
     // Configure for a repeating, edge aligned PWM pattern.
     PWM.MODE = PWM_MODE_UPDOWN_Up;
 
-    // Configure for a single pass over the data
-    PWM.LOOP = 0;
-
     // By default, enable control of four independent channels
     setDecoderMode(PWM_DECODER_LOAD_Individual);
 
@@ -55,9 +62,8 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
     PWM.SEQ[1].ENDDELAY = 0;
     PWM.SEQ[0].ENDDELAY = 0;
 
-    /* Enable interrupts */
-    PWM.INTENSET = (PWM_INTEN_SEQEND0_Enabled << PWM_INTEN_SEQEND0_Pos )
-                |  (PWM_INTEN_SEQEND1_Enabled << PWM_INTEN_SEQEND1_Pos );
+    // Default to streaming mode.
+    setStreamingMode(true);
 
     // Route an interrupt to this object
     // This is heavily unwound, but non trivial to remove this duplication given all the constants...
@@ -66,7 +72,6 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
     {
         nrf52_pwm_driver[0] = this;
         NVIC_SetVector( PWM0_IRQn, (uint32_t) nrf52_pwm0_irq );
-        NVIC_SetPriority(PWM0_IRQn, 0);
         NVIC_ClearPendingIRQ(PWM0_IRQn);
         NVIC_EnableIRQ(PWM0_IRQn);
     }
@@ -75,7 +80,6 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
     {
         nrf52_pwm_driver[1] = this;
         NVIC_SetVector( PWM1_IRQn, (uint32_t) nrf52_pwm1_irq );
-        NVIC_SetPriority(PWM1_IRQn, 0);
         NVIC_ClearPendingIRQ(PWM1_IRQn);
         NVIC_EnableIRQ(PWM1_IRQn);
     }
@@ -84,7 +88,6 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
     {
         nrf52_pwm_driver[2] = this;
         NVIC_SetVector( PWM2_IRQn, (uint32_t) nrf52_pwm2_irq );
-        NVIC_SetPriority(PWM2_IRQn, 0);
         NVIC_ClearPendingIRQ(PWM2_IRQn);
         NVIC_EnableIRQ(PWM2_IRQn);
     }
@@ -100,7 +103,7 @@ NRF52PWM::NRF52PWM(NRF_PWM_Type *module, DataSource &source, int sampleRate, uin
  * Determine the DAC playback sample rate to the given frequency.
  * @return the current sample rate.
  */
-int NRF52PWM::getSampleRate()
+float NRF52PWM::getSampleRate()
 {
     return sampleRate;
 }
@@ -118,7 +121,7 @@ int NRF52PWM::getSampleRange()
  * Change the DAC playback sample rate to the given frequency.
  * @param frequency The new sample playback frequency.
  */
-int NRF52PWM::setSampleRate(int frequency)
+float NRF52PWM::setSampleRate(float frequency)
 {
     return setPeriodUs(1000000 / frequency);
 }
@@ -127,7 +130,7 @@ int NRF52PWM::setSampleRate(int frequency)
  * Change the DAC playback sample rate to the given period.
  * @param period The new sample playback period, in microseconds.
  */
-int NRF52PWM::setPeriodUs(int period)
+int NRF52PWM::setPeriodUs(float period)
 {
     int prescaler = 0;
     int clock_frequency = 16000000;
@@ -139,10 +142,7 @@ int NRF52PWM::setPeriodUs(int period)
 
     // If the sample rate requested is outside the range of what the hardware can achieve, then there's nothign we can do.
     if (prescaler > 7)
-    {
-        DMESG("NRF52PWM: Invalid samplerate");
         return DEVICE_INVALID_PARAMETER;
-    }
 
     // Decrement prescaler, as hardware indexes from zero.
     PWM.PRESCALER = prescaler;
@@ -162,7 +162,7 @@ int NRF52PWM::setPeriodUs(int period)
  * Determine the current DAC playback period.
  * @return period The sample playback period, in microseconds.
  */
-int NRF52PWM::getPeriodUs()
+float NRF52PWM::getPeriodUs()
 {
     return periodUs;
 }
@@ -190,13 +190,77 @@ int NRF52PWM::setDecoderMode(uint32_t mode)
 }
  
 /**
- * Defines if the PWM modules should repeat the previous sample when the end of the stream is reached.
+ * Defines if the PWM module should maintain playout ordering of buffers, or always play the most recent buffer provided.
  * 
- * @ param repeat if true, the last PWM sample received is repeated if the stream underflows. If false, the PWM module will stop processing on stream underflow.
+ * @ param streamingMode If true, buffers will be streamed in order they are received. If false, the most recent buffer supplied always takes prescedence.
+ * @ param repeatOnEmpty If set to true, the last buffer received will be repeated when no data is available. If false, the PWM channel will be suspended.
  */
-void setLoop(bool repeat)
+void NRF52PWM::setStreamingMode(bool streamingMode, bool repeatOnEmpty)
 {
-    //TODO
+    this->streaming = streamingMode;
+    this->repeatOnEmpty = repeatOnEmpty;
+
+    if (streaming)
+    {
+        PWM.LOOP = 1;
+        PWM.SHORTS = PWM_SHORTS_LOOPSDONE_SEQSTART0_Enabled << PWM_SHORTS_LOOPSDONE_SEQSTART0_Pos; 
+        PWM.INTENSET = (PWM_INTEN_SEQEND0_Enabled << PWM_INTEN_SEQEND0_Pos ) | (PWM_INTEN_SEQEND1_Enabled << PWM_INTEN_SEQEND1_Pos);
+    }
+    else
+    {
+        PWM.LOOP = 0;
+        PWM.SHORTS = 0; 
+        PWM.INTENCLR = (PWM_INTEN_SEQEND0_Enabled << PWM_INTEN_SEQEND0_Pos ) | (PWM_INTEN_SEQEND1_Enabled << PWM_INTEN_SEQEND1_Pos);
+    }
+}
+
+/**
+ * Pull a buffer into the given double buffer slot, if one is available.
+ * @param b The buffer to fill (either 0 or 1)
+ * @return the number of buffers succesfully filled.
+ */
+int NRF52PWM::tryPull(uint8_t b)
+{
+    if (stopStreamingAfterBuf)
+    {
+        PWM.TASKS_STOP = 1;
+        while(PWM.EVENTS_STOPPED == 0);
+
+        active = false;
+        bufferPlaying = 0;
+        stopStreamingAfterBuf = 0;
+
+        // If a Pull request has been made since we decided to stop, start to fill up the
+        // hardware double buffer so that we don't stall.
+        if(dataReady)
+        {
+            dataReady--;
+            pullRequest();
+        }
+        return 0;
+    }
+
+    if (dataReady){
+        buffer[b] = upstream.pull();
+        PWM.SEQ[b].PTR = (uint32_t) buffer[b].getBytes();
+        PWM.SEQ[b].CNT = buffer[b].length() / 2;
+
+        dataReady--;
+
+        return 1;
+    }
+
+    // If we're in active streaming mode, and have requested a buffer and failed to get one, we have an underflow.
+    // Streaming mode is double buffered, so schedule ourself to stop after the next buffer is played, if we're so configured.
+    if (streaming && active && !repeatOnEmpty)
+    {
+        // The PWM doesn't seem to respond to changes in the SHORTS register while it's active...
+        // instead, we provide an empty buffer to prevent partial repetition of any previous buffer.
+        PWM.SEQ[b].PTR = (uint32_t) emptyBuffer;
+        PWM.SEQ[b].CNT = (uint32_t) NRF52PWM_EMPTY_BUFFERSIZE;
+        stopStreamingAfterBuf = 1;
+    }
+    return 0;
 }
 
 /**
@@ -206,50 +270,36 @@ int NRF52PWM::pullRequest()
 {
     dataReady++;
 
-    if (!active)
-        pull();
-
-    return DEVICE_OK;
-}
-
-void NRF52PWM::prefill()
-{
-    if (!dataReady)
-        return;
-
-    dataReady--;
-    if (!active) {
-        active = true;
-        nextBuffer = upstream.pull();
-        active = false;
-    } else {
-        nextBuffer = upstream.pull();
-    }
-}
-
-/**
- * Pull down a buffer from upstream, and schedule a DMA transfer from it.
- */
-int NRF52PWM::pull()
-{
-    if (!nextBuffer.length())
-        prefill();
-
-    buffer = nextBuffer;
-    nextBuffer = ManagedBuffer();
-
-    if (buffer.length()) {
-        PWM.SEQ[0].PTR = (uint32_t) &buffer[0];
-        PWM.SEQ[0].CNT = buffer.length() / 2;
-        active = true;
-        PWM.TASKS_SEQSTART[0] = 1;
-    } else {
-        dataReady = 0;
-        active = false;
-        return DEVICE_OK;
+    // If we're not running in streaming mode, simply pull the requested buffer and schedule for DMA.
+    if (!streaming)
+    {
+        int result = tryPull(0);
+        if (result || repeatOnEmpty)
+            PWM.TASKS_SEQSTART[0] = 1;
     }
 
-    prefill(); // pre-fetch next buffer
+    // If we're in streaming mode, ensure that we've preloaded both double buffers before initiating playout.
+    // note: care needed here, as our upstream data source MAY recursively call pullRequest() again in response to us
+    // pulling the first buffer...
+    if (streaming && !active)
+    {
+        active = true;
+
+        tryPull(bufferPlaying);
+        bufferPlaying = (bufferPlaying + 1) % 2;
+
+        if (bufferPlaying !=0 && dataReady)
+        {
+            tryPull(bufferPlaying);
+            bufferPlaying = (bufferPlaying + 1) % 2;
+        }
+
+        // Check if we've preloaded both buffers
+        if (bufferPlaying == 0)
+            PWM.TASKS_SEQSTART[0] = 1;
+        else
+            active = false;
+    }
 
     return DEVICE_OK;
 }
@@ -262,20 +312,18 @@ void NRF52PWM::irq()
     // once the sequence has finished playing, load up the next buffer.
     if (PWM.EVENTS_SEQEND[0])
     {
-        if (dataReady)
-            pull();
-        else
-            active = false;
+        bufferPlaying = 1;
+        tryPull(0);
 
         PWM.EVENTS_SEQEND[0] = 0;
-        // Spurious read to cover the "events don't clear immediately" erratum
-        (void) PWM.EVENTS_SEQEND[0];
     }
 
     if (PWM.EVENTS_SEQEND[1])
     {
+        bufferPlaying = 0;
+        tryPull(1);
+
         PWM.EVENTS_SEQEND[1] = 0;
-        (void) PWM.EVENTS_SEQEND[1];
     }
 }
 
@@ -303,8 +351,33 @@ void NRF52PWM::disable()
 int
 NRF52PWM::connectPin(Pin &pin, int channel)
 {
+    if (channel >= NRF52PWM_PWM_CHANNELS)
+        return DEVICE_INVALID_PARAMETER;
+
+    // If the pin is already connected to the requested channel, we have nothing to do.
+    // We optimise this in order to prevent any possible glitch to an already connected channel...
+    if (PWM.PSEL.OUT[channel] == pin.name)
+        return DEVICE_OK;
+
+    pin.disconnect();
     pin.setDigitalValue(0);
     PWM.PSEL.OUT[channel] = pin.name;
+    pin.disconnect();
 
+    pin.status |= IO_STATUS_ANALOG_OUT;
+    return DEVICE_OK;
+}
+
+/**
+ * Direct output of given PWM channel to the given pin
+ */
+int
+NRF52PWM::disconnectPin(Pin &pin)
+{
+    for (int channel = 0; channel < NRF52PWM_PWM_CHANNELS; channel++)
+        if (PWM.PSEL.OUT[channel] == pin.name)
+            PWM.PSEL.OUT[channel] = 0xFFFFFFFF;
+
+    pin.status &= ~IO_STATUS_ANALOG_OUT;
     return DEVICE_OK;
 }
